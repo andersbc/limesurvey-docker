@@ -1,14 +1,145 @@
-LimeSurvey
+LimeSurvey Docker DEMO container
 ==========
 
-LimeSurvey - the most popular
-Free Open Source Software survey tool on the web.
+* This repo is a fork of https://github.com/adamzammit/limesurvey-docker. 
+* The base image is at docker hub: https://hub.docker.com/r/acspri/limesurvey/
 
-https://www.limesurvey.org/en/
+*Note: at the moment this repo is only used for documenting my workflow and providing a docker-compose file. There are no changes to the original acspri/limesurvey image, which is the one that is used in the workflow.* 
+
+
+**This container is for my Limesurvey DEMO purposes**:
+
+It will fire up a local working instance of Limesurvey, in which you can create surveys, install themes, plugins, etc. The db content, installed theme and plugins will be locally persisted between container runs (as *docker volumes*)
+
+It is not suitable for development or testing as this setup does not share code folders with the host.
+
+
+## Usage
+The original `acspri/limesurvey` README.MD [instructions](https://github.com/adamzammit/limesurvey-docker) are retained further below, they detail further customization possibilities. This is my own simplified - guaranteed-to-work - workflow:   
+
+
+### Install (once)
+```bash
+# Clone this repo
+git clone https://github.com/andersbc/limesurvey-docker.git
+```
+
+*then specify Limesurvey version* in `docker-compose.yml`:
+```yml
+# Specify the LS version with a tag. In this example 4.1.7:
+# (with no tag the latest version is pulled)
+services:
+  limesurvey:
+    image: acspri/limesurvey:4.1.7
+
+```
+Check out https://hub.docker.com/r/acspri/limesurvey/ for the available tags (= ls versions).
+
+Save `docker-compose.yml` and you are ready to fire it up.
+
+### Fire up
+```bash
+cd limesurvey-docker
+# Using the docker-compose.yml: 
+docker-compose up
+# Wait for the operations to end. Se 
+# See troubleshoot if you get 'MySQL Connection Error'
+```
+Visit http://localhost:8082 or http://localhost:8082/admin and log in with *admin* and *password* (as specified in the `docker-composer.yml` file)
+
+Surveys, answers, installed themes and plugins, etc. will be retained between runs.
+
+**Troubleshot 'MySQL Connection Error'**: just ctrl+c and run the command again `docker-compose up`.
+
+
+### Tech documentation - what does it do?
+
+* The docker-compose creates three linked containers: limesurvey, mysql and mail. 
+* The [acspri/limesurvey](https://hub.docker.com/r/acspri/limesurvey/) docker image and corresponding github Dockerfile only pertains to the *Limesurvey* image. The other two images are maintained elsewhere.
+* The acspri/limesurvey container also creates two *volumes* corresponding to Limesurvey *plugins* and *upload* directories, where plugins and themes are persisted. This happens in `Dockerfile`.
+* The mysql container also creates a persisted docker volume for the db (it must).
+
+### Useful docker commands
+
+* **list all containers and container id's**: `docker ps -a`
+* **list all volumes and their id's**: `docker volumes ls`
+* **See what volumes a specific container uses**: `docker inspect [containerId]`, then localize `Mounts` in the output. Or use terse form: `docker inspect -f "{{ .Mounts }}" [containerId]`
+* **Delete the volumes**: WARNING - all data is lost: `docker-compose down -v`. Then do `docker-compose up` to recreate for scratch. You may have to run it twice to get rid of `MySQL Connection Error: ()`.
+* **Remove all containers and/or volumes on system**: `docker system prune` respectively `docker volume prune`. 
+* **Remove specific volumes**: List the volumes `docker volumes ls`, then delete by id: `docker volume rm [id1] [id2] [id3]`. To get the ids volumes the container uses see **See what volumes a specific container uses**. 
+* **Remove specific volumes**: `docker container rm [id1] [id2] [id3]`.
+
+
+Also see https://www.ionos.com/community/server-cloud-infrastructure/docker/understanding-and-managing-docker-container-volumes/
+
+and: https://github.com/docker/compose/issues/4476 
+
+
+# Deprecated clean up:
+
+
+
+## Fire it up WITH directory mapping / code sharing 
+
+**Create directories for code sharing** if you haven't already: create two folders on your host machine, one for *plugins* and another for *uploads*, e.g. `C:\LSdocker\plugins` and `C:\LSdocker\upload`. 
+
+Then **start container** with directory mapping, referencing the newly created folders, e.g.:
+
+**Does not work right now!**!!!
+Read more here: https://www.ionos.com/community/server-cloud-infrastructure/docker/understanding-and-managing-docker-container-volumes/
+
+
+**What I need is a folder on the host file system that contains the content of the 
+html folder in the container, sp that I can edit the files on the host file system.**
+
+see this answer
+https://stackoverflow.com/questions/39176561/copying-files-to-a-container-with-docker-compose/39181484#39181484
+
+...specifically this comment:
+
+@Tarator yes indeed, the right hand side is not copied to the host anymore. I'll update the answer. As for a way to copy on container start, you can override the startup command with something like this docker run -v /dir/on/host:/hostdir php sh -c "cp -rp /var/www/html/* /hostdir && exec myapp". Don't forget to use exec to invoke the final command so that it is assigned PID1. That will make sure that myapp receives termination signals (Ctrl-C for instance). – Bernard Apr 24 '17 at 10:07
+
+
+
+```bash
+cd limesurvey-docker
+docker-compose up -v C:\LSdocker\plugins:/var/www/html/plugins -v C:\LSdocker\upload:/var/www/html/upload
+```
+
+Visit http://localhost:8082 or http://localhost:8082/admin and log in with *admin* and *password* (specified in the `docker-composer.yml` file).
+
+You can now edit the code of plugins and themes directly in the shared folders on your host machine. To **circumvent LS caching** you also need to  
+
+**Troubleshoot:**
+
+I you have previously started the container with NO folder mapping OR you want to map to other folders, you need to first run the command below, otherwise the folder mapping will have no effect:
+
+remove container
+```bash
+docker-compose rm
+```
+
+Remove images and containers: https://devopsheaven.com/docker/volumes/purge/devops/2018/05/25/purge-docker-images-containers-networks-volumes.html
+
+------
+
+
+Edit `docker-composer.yml` file if yo need to alter other settings. Also check out the documentation below, e.g. for linking to external msyql instance, outside the container. 
+
+
+
+
+* **todo** Find a way to have phpmaydamin access to the db?
+
+
+
+# These are the unmodified original instructions kept for reference:
+
 
 This docker image is for Limesurvey on apache/php in its own container. It accepts environment variables to update the configuration file. On first run it will automatically create the database if a username and password are supplied, and on subsequent runs it can update the administrator password if provided as an environment variable.
 
 Volumes are specified for plugins and upload directories for persistence.
+
 
 # Tags
 
@@ -17,7 +148,9 @@ Volumes are specified for plugins and upload directories for persistence.
 -    development - Tracks LimeSurvey development release (https://www.limesurvey.org/development-release)
 
 
-# How to use this image
+# How to use this image 
+
+
 
 ```console
 $ docker run --name some-limesurvey --link some-mysql:mysql -d acspri/limesurvey
