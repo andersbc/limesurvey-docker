@@ -6,6 +6,8 @@ Limesurvey Docker container
 
 *Note: at the moment this repo is only used for documenting my workflows and providing a docker-compose-dev file for a setup that works for me. There are no changes to the original [acspri/limesurvey docker image](https://hub.docker.com/r/acspri/limesurvey/), which is the one that is used in the workflows. The only files changed are `README.md` and `docker-compose-dev.yml` (added).*
 
+**= This container is NOT for production =**
+
 **<a name="contents">Contents:**
 * **[Usage DEMO](#usage-demo)**: Workflow for setting up a LS installation for **demo** purposes.
 * **[Usage DEV](#usage-dev)**: Workflow for setting up a LS installation for **development** purposes. The code folder will be shared with the host system. 
@@ -13,9 +15,6 @@ Limesurvey Docker container
 * **[Useful Docker commands](#useful-docker-commands)**: commands for listing, deleting, etc. containers/volumes.
 * [Original documentation](#orginal-docs): The original README.md documentation, kept for reference.
 
-
-
-**This container is for my Limesurvey DEMO purposes**:
 
 
 ## <a name="usage-demo">Usage DEMO
