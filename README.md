@@ -4,28 +4,26 @@ Limesurvey Docker container
 * This repo is a fork of https://github.com/adamzammit/limesurvey-docker. 
 * The base image is at docker hub: https://hub.docker.com/r/acspri/limesurvey/
 
-*Note: at the moment this repo is only used for documenting my workflow and providing a docker-compose file. There are no changes to the original [acspri/limesurvey image](https://hub.docker.com/r/acspri/limesurvey/), which is the one that is used in the workflow.* 
+*Note: at the moment this repo is only used for documenting my workflows and providing a docker-compose file for a setup that works for me. There are no changes to the original [acspri/limesurvey image](https://hub.docker.com/r/acspri/limesurvey/), which is the one that is used in the workflows.* 
 
 **<a name="contents">Contents:**
-* **[Usage DEMO](#usage-demo)**:
-* **[Docker tech docs](#docker-tech-doc)**:
-* **[Useful Docker commands](#useful-docker-commands)**:
-* [Original documentation](#orginal-docs): the orginal documentation, kept for reference.
+* **[Usage DEMO](#usage-demo)**: Workflow for setting up a LS installation for **demo** purposes.
+* **[Usage DEV](#usage-dev)**: Workflow for setting up a LS installation for **development** purposes. The code folder will be shared with the host system. 
+* **[Docker tech docs](#docker-tech-doc)**: Notes on what this repo does.
+* **[Useful Docker commands](#useful-docker-commands)**: commands for listing, deleting, etc. containers/volumes.
+* [Original documentation](#orginal-docs): The original README.md documentation, kept for reference.
 
 
 
 **This container is for my Limesurvey DEMO purposes**:
 
-It will fire up a local working instance of Limesurvey, in which you can create surveys, install themes, plugins, etc. The db content, installed theme and plugins will be locally persisted between container runs (as *docker volumes*)
-
-It is not suitable for development or testing as this setup does not share code folders with the host.
-
 
 ## <a name="usage-demo">Usage DEMO
-The original `acspri/limesurvey` README.MD [instructions](https://github.com/adamzammit/limesurvey-docker) are retained further below, they detail further customization possibilities. This is my own simplified - guaranteed-to-work - workflow:   
+
+*Use this workflow for demonstrating LS. It will fire up a local working instance of Limesurvey, in which you can create surveys, install themes, plugins, etc. The db content, installed theme and plugins will be locally persisted between container runs, as *docker volumes*. No code sharing in this workflow, so you can't access the code (see [Usage DEV](#usage-dev) for this).*
 
 
-### Install (once)
+### <a name="usage-demo-install">Install (once)
 ```bash
 # Clone this repo
 git clone https://github.com/andersbc/limesurvey-docker.git
@@ -39,7 +37,7 @@ services:
     image: acspri/limesurvey:4.1.7
 
 ```
-Check out https://hub.docker.com/r/acspri/limesurvey/ for the available tags (= ls versions). With no tag specified, e.g. `image: acspri/limesurvey`, the latest stable version of LS that the image contains is pulled.
+Check out https://hub.docker.com/r/acspri/limesurvey/ for the available tags (= ls versions). With no tag specified, e.g. `image: acspri/limesurvey`, the latest stable version of LS is pulled.
 
 Save `docker-compose.yml` and you are ready to fire it up.
 
@@ -56,6 +54,73 @@ Visit http://localhost:8082 or http://localhost:8082/admin and log in with *admi
 Surveys, answers, installed themes and plugins, etc. will be retained between runs.
 
 **Troubleshot 'MySQL Connection Error'**: just ctrl+c and run `docker-compose up` again.
+
+## <a name="usage-dev">Usage DEV
+
+*Use this workflow for **developing plugins and themes**. The LS php code will be shared with the host system, so you can edit it in place. The db content will be locally persisted between container runs as a *docker volume*.* 
+
+### Daily usage
+Once you have completed **Install and Setup** below, simply run this command from the root of this library:
+```bash
+docker-compose -f docker-compose-dev.yml 
+```
+Visit http://localhost:8082 or http://localhost:8082/admin and log in with *admin* and *password* (as specified in the `docker-composer.yml` file)
+
+...you can then live edit the code, in the shared folder specified during install.
+
+
+### Install and setup (once)
+```bash
+# Clone this repo
+git clone https://github.com/andersbc/limesurvey-docker.git
+```
+
+#### Edit `docker-compose-dev.yml`
+
+Specify the LS version and the path to the folder on your host system that you want shared, as exemplified below. 
+
+In this example we use LS version `4.1.7` and  **`C:\LSdocker2\html`** (yes, a windows machine):
+
+```yml
+# Specify the LS version with a tag. In this example 4.1.7:
+services:
+  limesurvey:
+    image: acspri/limesurvey:4.1.7
+    # ...
+    volumes:
+    - C:\LSdocker2\html:/var/www/dev
+  # ... (leave other lines as is)
+
+```
+(...see Usage Demo for more about LS versions)
+
+
+#### Setup code sharing
+Start containers:
+```bash
+docker-compose -f docker-compose-dev.yml up
+```
+
+...then get the name of the *limesurvey* container with `docker ps`. In the commands below we will assume it is `limesurvey-docker_limesurvey_1` and that the shared host folder is **`C:\LSdocker2\html`**. Replace with whatever  you have.
+
+```bash
+# String replace '/var/www/html' -> '/var/www/dev' in apache conf files.
+# '/var/www/dev' is what the shared host folder points to
+docker exec -it limesurvey-docker_limesurvey_1 sh -c "find /etc/apache2/ -name '*.conf' -exec sed -i s!/var/www/html!/var/www/dev!g {} \; "
+
+# Reload apache
+docker exec -it limesurvey-docker_limesurvey_1 /etc/init.d/apache2 reload
+
+# Copy contents of /var/www/html/ to host shared folder
+# They will now also be visible in /var/www/dev
+docker cp limesurvey-docker_limesurvey_1:/var/www/html/ C:\LSdocker2\html
+```
+
+The website should now be running from the files in the shared host folder. Visit http://localhost:8082 or http://localhost:8082/admin and log in with *admin*/*password*. Happy coding!
+
+**Troubleshot 'MySQL Connection Error'**: just ctrl+c and run `docker-compose -f docker-compose-dev.yml up` again.
+
+**FIX slow docker on windows**: Exclude the shared folder from Windows Defender. See highest rated comment here: https://github.com/docker/for-win/issues/1936
 
 
 ## <a name="docker-tech-doc">Docker tech documentation - what does it do?
@@ -80,121 +145,6 @@ Also see https://www.ionos.com/community/server-cloud-infrastructure/docker/unde
 
 and: https://github.com/docker/compose/issues/4476 
 
-# Use dev version (work in progress)
-
-* spin up
-* copy files to host dir
-* share volume with container
-
-docker cp <containerId>:/file/path/within/container /host/path/target
-
-e.g. docker cp 8bbaed94363f:/var/www/html C:\LSdocker2\html
-
-
-# Deprecated clean up:
-
-
-
-## Fire it up WITH directory mapping / code sharing 
-
-**Create directories for code sharing** if you haven't already: create two folders on your host machine, one for *plugins* and another for *uploads*, e.g. `C:\LSdocker\plugins` and `C:\LSdocker\upload`. 
-
-Then **start container** with directory mapping, referencing the newly created folders, e.g.:
-
-**Does not work right now!**!!!
-Read more here: https://www.ionos.com/community/server-cloud-infrastructure/docker/understanding-and-managing-docker-container-volumes/
-
-
-**What I need is a folder on the host file system that contains the content of the 
-html folder in the container, sp that I can edit the files on the host file system.**
-
-see this answer
-https://stackoverflow.com/questions/39176561/copying-files-to-a-container-with-docker-compose/39181484#39181484
-
-...specifically this comment:
-
-@Tarator yes indeed, the right hand side is not copied to the host anymore. I'll update the answer. As for a way to copy on container start, you can override the startup command with something like this docker run -v /dir/on/host:/hostdir php sh -c "cp -rp /var/www/html/* /hostdir && exec myapp". Don't forget to use exec to invoke the final command so that it is assigned PID1. That will make sure that myapp receives termination signals (Ctrl-C for instance). – Bernard Apr 24 '17 at 10:07
-
-
-
-```bash
-cd limesurvey-docker
-docker-compose up -v C:\LSdocker\plugins:/var/www/html/plugins -v C:\LSdocker\upload:/var/www/html/upload
-```
-
-Visit http://localhost:8082 or http://localhost:8082/admin and log in with *admin* and *password* (specified in the `docker-composer.yml` file).
-
-You can now edit the code of plugins and themes directly in the shared folders on your host machine. To **circumvent LS caching** you also need to  
-
-**Troubleshoot:**
-
-I you have previously started the container with NO folder mapping OR you want to map to other folders, you need to first run the command below, otherwise the folder mapping will have no effect:
-
-remove container
-```bash
-docker-compose rm
-```
-
-Remove images and containers: https://devopsheaven.com/docker/volumes/purge/devops/2018/05/25/purge-docker-images-containers-networks-volumes.html
-
-------
-
-NEW
-
-docker exec -it limesurvey-docker_limesurvey_1 cp -R /var/www/html cp -R /var/www/html /var/www/html2
-docker exec -it limesurvey-docker_limesurvey_1 sed -ri -e 's!/var/www/html!/var/www/html2!g' /etc/apache2/sites-available/*.conf 
-
-docker exec -it limesurvey-docker_limesurvey_1 grep --include={*.conf} -rnl "/etc/apache2/" -e "/var/www/html" | xargs -i@ sed -i s!/var/www/html!/var/www/dev!g @
-
-docker exec -it limesurvey-docker_limesurvey_1 cd /etc/apache2/ && grep -rli "/var/www/html" *.conf | xargs -i@ sed -i s!/var/www/html!/var/www/dev!g @
-
-docker exec -it -w /etc/apache2 limesurvey-docker_limesurvey_1 grep -rli "/var/www/html" *.conf | xargs -i@ sed -i s!/var/www/html!/var/www/dev!g @
-
-find ./ -type f -exec sed -i s!/var/www/html!/var/www/dev!g {} \;
-
-docker exec -it find /etc/apache2/ -name "*.conf" -exec sed -i s!/var/www/html!/var/www/dev!g {} \;
-
-docker exec -it find /etc/apache2/ -name "*.conf" -exec sed -i s!/var/www/html!/var/www/dev!g {} \;
-
--
-
-docker exec -it limesurvey-docker_limesurvey_1 /bin/bash find /etc/apache2/ -name "*.conf" -exec sed -i s!/var/www/html!/var/www/dev!g {} \;
-
-docker exec -it limesurvey-docker_limesurvey_1 sh -c 'find /etc/apache2/ -name "*.conf" -exec sed -i s!/var/www/html!/var/www/dev!g {} \; '
-
-more /etc/apache2/sites-available/000-default.conf
-
-docker exec -it limesurvey-docker_limesurvey_1 sh -c "find /etc/apache2/ -name '*.conf' -exec sed -i s!/var/www/html!/var/www/dev!g {} \; "
-
-
-docker exec -it limesurvey-docker_limesurvey_1 /etc/init.d/apache2 reload
-
-docker cp limesurvey-docker_limesurvey_1:/var/www/html/ C:\LSdocker2\html
- 
- -
-
-1. create shared volume 
-1. change apache conf tp point to new folder
-1. restart apache
-1. manually copy files 
-
-
-    command:
-      - sed -ri -e 's!/var/www/html!/var/www/html2!g' /etc/apache2/sites-available/*.conf 
-      - sed -ri -e 's!/var/www/!/var/www/html2!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-    volumes:
-      - C:\LSdocker2\html:/var/www/html2
-
-
-command: bash -c "find /etc/apache2/ -name '*.conf' -exec sed -i s!/var/www/html!/var/www/dev!g {} \;" 
-Edit `docker-composer.yml` file if yo need to alter other settings. Also check out the documentation below, e.g. for linking to external msyql instance, outside the container. 
-
-
-
-
-* **todo** Find a way to have phpmaydamin access to the db?
-
-
 
 # <a name="orginal-docs">Original docs
 
@@ -214,8 +164,6 @@ Volumes are specified for plugins and upload directories for persistence.
 
 
 # How to use this image 
-
-
 
 ```console
 $ docker run --name some-limesurvey --link some-mysql:mysql -d acspri/limesurvey
