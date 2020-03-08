@@ -1,10 +1,17 @@
-LimeSurvey Docker DEMO container
+Limesurvey Docker container
 ==========
 
 * This repo is a fork of https://github.com/adamzammit/limesurvey-docker. 
 * The base image is at docker hub: https://hub.docker.com/r/acspri/limesurvey/
 
-*Note: at the moment this repo is only used for documenting my workflow and providing a docker-compose file. There are no changes to the original acspri/limesurvey image, which is the one that is used in the workflow.* 
+*Note: at the moment this repo is only used for documenting my workflow and providing a docker-compose file. There are no changes to the original [acspri/limesurvey image](https://hub.docker.com/r/acspri/limesurvey/), which is the one that is used in the workflow.* 
+
+**<a name="contents">Contents:**
+* **[Usage DEMO](#usage-demo)**:
+* **[Docker tech docs](#docker-tech-doc)**:
+* **[Useful Docker commands](#useful-docker-commands)**:
+* [Original documentation](#orginal-docs): the orginal documentation, kept for reference.
+
 
 
 **This container is for my Limesurvey DEMO purposes**:
@@ -14,7 +21,7 @@ It will fire up a local working instance of Limesurvey, in which you can create 
 It is not suitable for development or testing as this setup does not share code folders with the host.
 
 
-## Usage
+## <a name="usage-demo">Usage DEMO
 The original `acspri/limesurvey` README.MD [instructions](https://github.com/adamzammit/limesurvey-docker) are retained further below, they detail further customization possibilities. This is my own simplified - guaranteed-to-work - workflow:   
 
 
@@ -24,16 +31,15 @@ The original `acspri/limesurvey` README.MD [instructions](https://github.com/ada
 git clone https://github.com/andersbc/limesurvey-docker.git
 ```
 
-*then specify Limesurvey version* in `docker-compose.yml`:
+*...then specify Limesurvey version* in `docker-compose.yml`:
 ```yml
 # Specify the LS version with a tag. In this example 4.1.7:
-# (with no tag the latest version is pulled)
 services:
   limesurvey:
     image: acspri/limesurvey:4.1.7
 
 ```
-Check out https://hub.docker.com/r/acspri/limesurvey/ for the available tags (= ls versions).
+Check out https://hub.docker.com/r/acspri/limesurvey/ for the available tags (= ls versions). With no tag specified, e.g. `image: acspri/limesurvey`, the latest stable version of LS that the image contains is pulled.
 
 Save `docker-compose.yml` and you are ready to fire it up.
 
@@ -42,24 +48,24 @@ Save `docker-compose.yml` and you are ready to fire it up.
 cd limesurvey-docker
 # Using the docker-compose.yml: 
 docker-compose up
-# Wait for the operations to end. Se 
+# Wait for the operations to end.
 # See troubleshoot if you get 'MySQL Connection Error'
 ```
 Visit http://localhost:8082 or http://localhost:8082/admin and log in with *admin* and *password* (as specified in the `docker-composer.yml` file)
 
 Surveys, answers, installed themes and plugins, etc. will be retained between runs.
 
-**Troubleshot 'MySQL Connection Error'**: just ctrl+c and run the command again `docker-compose up`.
+**Troubleshot 'MySQL Connection Error'**: just ctrl+c and run `docker-compose up` again.
 
 
-### Tech documentation - what does it do?
+## <a name="docker-tech-doc">Docker tech documentation - what does it do?
 
 * The docker-compose creates three linked containers: limesurvey, mysql and mail. 
 * The [acspri/limesurvey](https://hub.docker.com/r/acspri/limesurvey/) docker image and corresponding github Dockerfile only pertains to the *Limesurvey* image. The other two images are maintained elsewhere.
 * The acspri/limesurvey container also creates two *volumes* corresponding to Limesurvey *plugins* and *upload* directories, where plugins and themes are persisted. This happens in `Dockerfile`.
 * The mysql container also creates a persisted docker volume for the db (it must).
 
-### Useful docker commands
+## <a name="useful-docker-commands">Useful docker commands
 
 * **list all containers and container id's**: `docker ps -a`
 * **list all volumes and their id's**: `docker volumes ls`
@@ -67,12 +73,22 @@ Surveys, answers, installed themes and plugins, etc. will be retained between ru
 * **Delete the volumes**: WARNING - all data is lost: `docker-compose down -v`. Then do `docker-compose up` to recreate for scratch. You may have to run it twice to get rid of `MySQL Connection Error: ()`.
 * **Remove all containers and/or volumes on system**: `docker system prune` respectively `docker volume prune`. 
 * **Remove specific volumes**: List the volumes `docker volumes ls`, then delete by id: `docker volume rm [id1] [id2] [id3]`. To get the ids volumes the container uses see **See what volumes a specific container uses**. 
-* **Remove specific volumes**: `docker container rm [id1] [id2] [id3]`.
+* **Remove specific containers**: `docker container rm [id1] [id2] [id3]`.
 
 
 Also see https://www.ionos.com/community/server-cloud-infrastructure/docker/understanding-and-managing-docker-container-volumes/
 
 and: https://github.com/docker/compose/issues/4476 
+
+# Use dev version (work in progress)
+
+* spin up
+* copy files to host dir
+* share volume with container
+
+docker cp <containerId>:/file/path/within/container /host/path/target
+
+e.g. docker cp 8bbaed94363f:/var/www/html C:\LSdocker2\html
 
 
 # Deprecated clean up:
@@ -123,7 +139,54 @@ Remove images and containers: https://devopsheaven.com/docker/volumes/purge/devo
 
 ------
 
+NEW
 
+docker exec -it limesurvey-docker_limesurvey_1 cp -R /var/www/html cp -R /var/www/html /var/www/html2
+docker exec -it limesurvey-docker_limesurvey_1 sed -ri -e 's!/var/www/html!/var/www/html2!g' /etc/apache2/sites-available/*.conf 
+
+docker exec -it limesurvey-docker_limesurvey_1 grep --include={*.conf} -rnl "/etc/apache2/" -e "/var/www/html" | xargs -i@ sed -i s!/var/www/html!/var/www/dev!g @
+
+docker exec -it limesurvey-docker_limesurvey_1 cd /etc/apache2/ && grep -rli "/var/www/html" *.conf | xargs -i@ sed -i s!/var/www/html!/var/www/dev!g @
+
+docker exec -it -w /etc/apache2 limesurvey-docker_limesurvey_1 grep -rli "/var/www/html" *.conf | xargs -i@ sed -i s!/var/www/html!/var/www/dev!g @
+
+find ./ -type f -exec sed -i s!/var/www/html!/var/www/dev!g {} \;
+
+docker exec -it find /etc/apache2/ -name "*.conf" -exec sed -i s!/var/www/html!/var/www/dev!g {} \;
+
+docker exec -it find /etc/apache2/ -name "*.conf" -exec sed -i s!/var/www/html!/var/www/dev!g {} \;
+
+-
+
+docker exec -it limesurvey-docker_limesurvey_1 /bin/bash find /etc/apache2/ -name "*.conf" -exec sed -i s!/var/www/html!/var/www/dev!g {} \;
+
+docker exec -it limesurvey-docker_limesurvey_1 sh -c 'find /etc/apache2/ -name "*.conf" -exec sed -i s!/var/www/html!/var/www/dev!g {} \; '
+
+more /etc/apache2/sites-available/000-default.conf
+
+docker exec -it limesurvey-docker_limesurvey_1 sh -c "find /etc/apache2/ -name '*.conf' -exec sed -i s!/var/www/html!/var/www/dev!g {} \; "
+
+
+docker exec -it limesurvey-docker_limesurvey_1 /etc/init.d/apache2 reload
+
+docker cp limesurvey-docker_limesurvey_1:/var/www/html/ C:\LSdocker2\html
+ 
+ -
+
+1. create shared volume 
+1. change apache conf tp point to new folder
+1. restart apache
+1. manually copy files 
+
+
+    command:
+      - sed -ri -e 's!/var/www/html!/var/www/html2!g' /etc/apache2/sites-available/*.conf 
+      - sed -ri -e 's!/var/www/!/var/www/html2!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+    volumes:
+      - C:\LSdocker2\html:/var/www/html2
+
+
+command: bash -c "find /etc/apache2/ -name '*.conf' -exec sed -i s!/var/www/html!/var/www/dev!g {} \;" 
 Edit `docker-composer.yml` file if yo need to alter other settings. Also check out the documentation below, e.g. for linking to external msyql instance, outside the container. 
 
 
@@ -133,7 +196,9 @@ Edit `docker-composer.yml` file if yo need to alter other settings. Also check o
 
 
 
-# These are the unmodified original instructions kept for reference:
+# <a name="orginal-docs">Original docs
+
+**These are the unmodified original instructions from https://github.com/adamzammit/limesurvey-docker kept reference.**
 
 
 This docker image is for Limesurvey on apache/php in its own container. It accepts environment variables to update the configuration file. On first run it will automatically create the database if a username and password are supplied, and on subsequent runs it can update the administrator password if provided as an environment variable.
