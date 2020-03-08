@@ -4,7 +4,7 @@ Limesurvey Docker container
 * This repo is a fork of https://github.com/adamzammit/limesurvey-docker. 
 * The base image is at docker hub: https://hub.docker.com/r/acspri/limesurvey/
 
-*Note: at the moment this repo is only used for documenting my workflows and providing a docker-compose file for a setup that works for me. There are no changes to the original [acspri/limesurvey image](https://hub.docker.com/r/acspri/limesurvey/), which is the one that is used in the workflows.* 
+*Note: at the moment this repo is only used for documenting my workflows and providing a docker-compose-dev file for a setup that works for me. There are no changes to the original [acspri/limesurvey docker image](https://hub.docker.com/r/acspri/limesurvey/), which is the one that is used in the workflows. The only files changed are `README.md` and `docker-compose-dev.yml` (added).*
 
 **<a name="contents">Contents:**
 * **[Usage DEMO](#usage-demo)**: Workflow for setting up a LS installation for **demo** purposes.
@@ -20,7 +20,7 @@ Limesurvey Docker container
 
 ## <a name="usage-demo">Usage DEMO
 
-*Use this workflow for demonstrating LS. It will fire up a local working instance of Limesurvey, in which you can create surveys, install themes, plugins, etc. The db content, installed theme and plugins will be locally persisted between container runs, as *docker volumes*. No code sharing in this workflow, so you can't access the code (see [Usage DEV](#usage-dev) for this).*
+*Use this workflow for demonstrating LS. It will fire up a local working instance of Limesurvey, in which you can create surveys, install themes, plugins, etc. The db content, installed theme and plugins will be locally persisted between container runs, as *docker volumes*. No code sharing in this workflow (see [Usage DEV](#usage-dev) for that).*
 
 
 ### <a name="usage-demo-install">Install (once)
@@ -75,7 +75,7 @@ Visit http://localhost:8082 or http://localhost:8082/admin and log in with *admi
 git clone https://github.com/andersbc/limesurvey-docker.git
 ```
 
-#### Edit `docker-compose-dev.yml`
+#### A) Edit `docker-compose-dev.yml`
 
 Specify the LS version and the path to the folder on your host system that you want shared, as exemplified below. 
 
@@ -92,16 +92,16 @@ services:
   # ... (leave other lines as is)
 
 ```
-(...see Usage Demo for more about LS versions)
+*...see Usage Demo for more about LS versions*
 
 
-#### Setup code sharing
+#### B) Setup code sharing
 Start containers:
 ```bash
 docker-compose -f docker-compose-dev.yml up
 ```
 
-...then get the name of the *limesurvey* container with `docker ps`. In the commands below we will assume it is `limesurvey-docker_limesurvey_1` and that the shared host folder is **`C:\LSdocker2\html`**. Replace with whatever  you have.
+...then get the name of the *limesurvey* container with `docker ps`. In the commands below we will assume it is `limesurvey-docker_limesurvey_1` and that the shared host folder is **`C:\LSdocker2\html`**. Replace with whatever you have and run:
 
 ```bash
 # String replace '/var/www/html' -> '/var/www/dev' in apache conf files.
@@ -112,7 +112,7 @@ docker exec -it limesurvey-docker_limesurvey_1 sh -c "find /etc/apache2/ -name '
 docker exec -it limesurvey-docker_limesurvey_1 /etc/init.d/apache2 reload
 
 # Copy contents of /var/www/html/ to host shared folder
-# They will now also be visible in /var/www/dev
+# It will then also be visible to apache in /var/www/dev
 docker cp limesurvey-docker_limesurvey_1:/var/www/html/ C:\LSdocker2\html
 ```
 
